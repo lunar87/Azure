@@ -1,0 +1,32 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "location": {
+        "value": "centralus"
+      },
+      "secondaryLocation": {
+        "value": "centralus"
+      },
+      "prefix": {
+        "value": "a11"
+      },
+      "adminUsername": {
+        "reference": {
+          "keyVault": {
+            "id": "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.KeyVault/vaults/{keyVaultName}"
+          },
+          "secretName": "admin"
+        }
+      },
+      "adminPassword": {
+        "reference": {
+          "keyVault": {
+            "id": "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.KeyVault/vaults/{keyVaultName}"
+          },
+          "secretName": "pswd"
+        }
+      }
+    }
+  }
+    
