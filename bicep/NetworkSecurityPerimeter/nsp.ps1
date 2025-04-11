@@ -15,17 +15,21 @@ $param=$path + "nsp.param.json"
 $tempParamFilePath = "nsp.param.temp.json"
 (Get-Content $param) -replace '{subscriptionId}', $subscriptionId `
                              -replace '{resourceGroupName}', $config.kvResourceGroupName `
-                             -replace '{keyVaultName}', $config.keyVaultName | Set-Content $tempParamFilePath
+                             -replace '{keyVaultName}', $config.keyVaultName `
+                             -replace '{secondSubId}', $config.sub2Id `
+                             -replace '{secondResourceGroupName}', $config.secondResourceGroupName `
+                                | Set-Content $tempParamFilePath
                            
 Test-AzResourceGroupDeployment -ResourceGroupName $rgname `
     -TemplateFile $template -TemplateParameterFile $tempParamFilePath -Verbose
 
 New-AzResourceGroupDeployment -ResourceGroupName $rgname `
-    -TemplateFile $template -TemplateParameterFile $tempParamFilePath
+    -TemplateFile $template -TemplateParameterFile $tempParamFilePath -Verbose
 
 Remove-Item $tempParamFilePath
 
-
+Get-AzDiagnosticSettingCategory -ResourceId "/subscriptions/b6b20730-c8fa-4926-8e12-97f19af05d94/resourceGroups/nspbasic/providers/Microsoft.Network/networkSecurityPerimeters/a11nsp-blbkgt"
+/subscriptions/b6b20730-c8fa-4926-8e12-97f19af05d94/resourceGroups/nspbasic/providers/Microsoft.Network/networkSecurityPerimeters/a11nsp-blbkgt
 Get-AzResourceGroupDeploymentOperation -ResourceGroupName $rgname `
     -DeploymentName nsp | Where-Object { $_.Properties.ProvisioningState -eq 'Failed' } `
     | Select-Object -ExpandProperty Properties | Select-Object -ExpandProperty StatusMessage `
@@ -41,3 +45,4 @@ $_.Properties.StatusMessage.Error
 }
 
 Remove-AzResourceGroup -Name $rgname -Force
+
