@@ -5,9 +5,6 @@
       "location": {
         "value": "centralus"
       },
-      "secondaryLocation": {
-        "value": "centralus"
-      },
       "prefix": {
         "value": "a11"
       },
@@ -26,6 +23,15 @@
           },
           "secretName": "pswd"
         }
+      },
+      "secondSubId":{
+        "value": "{secondSubId}"
+      },
+      "secondResourceGroup": {
+        "value": "{secondResourceGroupName}"
+      },
+      "logAnalyticsWorkspaceId": {
+        "value": "/subscriptions/b6b20730-c8fa-4926-8e12-97f19af05d94/resourceGroups/DefaultResourceGroup-NCUS/providers/Microsoft.OperationalInsights/workspaces/DefaultWorkspace-b6b20730-c8fa-4926-8e12-97f19af05d94-NCUS"
       }
     }
   }

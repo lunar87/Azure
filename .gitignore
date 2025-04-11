@@ -3,5 +3,6 @@
 # Exclude files that are sensitive to security and privacy
 login.ps1
 config.json
+nsptest.ps1
 
     

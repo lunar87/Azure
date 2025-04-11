@@ -1,27 +1,28 @@
 param location string = resourceGroup().location
-param secondaryLocation string
 param adminUsername string
 @secure()
 param adminPassword string
 param prefix string
+param secondSubId string
+param secondResourceGroup string
+param logAnalyticsWorkspaceId string // Add this parameter for Log Analytics workspace ID
 
 var uniqueStr = uniqueString(resourceGroup().id)
 var suffix = substring(uniqueStr, 0, 6)
 
 var storageAccountName = '${prefix}stg${suffix}'
-var keyVaultName = '${prefix}kv-${suffix}'
+var keyVaultName = '${prefix}kv6-${suffix}'
 var vmName = '${prefix}vm-${suffix}'
-var secondaryVmName = '${prefix}vm2-${suffix}'
+var storageAccountName2 = '${prefix}stg2${suffix}'
+var storageAccountName3 = '${prefix}stg3${suffix}'
+var storageAccountName4 = '${prefix}stg4${suffix}'
 var vnetName = '${prefix}vnet-${suffix}'
-var secondaryVnetName = '${prefix}vnet2-${suffix}'
 var subnetName = 'apps'
 var nsgName = '${prefix}nsg-${suffix}'
-var secondaryNsgName = '${prefix}nsg2-${suffix}'
 var nspName = '${prefix}nsp-${suffix}'
 var nspProfileName = '${prefix}nspprof-${suffix}'
 var nspProfileAssocName = '${prefix}nspprofassoc-${suffix}'
 var bastionHostName = '${prefix}bastion-${suffix}'
-var secondaryBastionHostName = '${prefix}bastion2-${suffix}'
 
 resource nsp 'Microsoft.Network/networkSecurityPerimeters@2023-08-01-preview' = {
   name: nspName
@@ -49,6 +50,17 @@ resource nspassoc 'Microsoft.Network/networkSecurityPerimeters/resourceAssociati
       id: nspProf.id
     }
   }
+
+}
+
+resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: '${nspName}-diagnostic'
+  scope: nsp
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+    ]
+  }
 }
 
 resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
@@ -65,40 +77,10 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
         name: subnetName
         properties: {
           addressPrefix: '10.0.0.0/24'
-          serviceEndpoints: [
-            {
-              service: 'Microsoft.Storage'
-            }
-            {
-              service: 'Microsoft.KeyVault'
-            }
-          ]
           networkSecurityGroup: {
             id: nsg.id
           }
-        }
-      }
-    ]
-  }
-}
-
-resource secondaryVnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
-  name: secondaryVnetName
-  location: secondaryLocation
-  properties: {
-    addressSpace: {
-      addressPrefixes: [
-        '10.1.0.0/21'
-      ]
-    }
-    subnets: [
-      {
-        name: subnetName
-        properties: {
-          addressPrefix: '10.1.0.0/24'
-          networkSecurityGroup: {
-            id: secondaryNsg.id
-          }
+          privateEndpointNetworkPolicies: 'Disabled'
         }
       }
     ]
@@ -115,17 +97,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
   }
 }
 
-resource secondaryNsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
-  name: secondaryNsgName
-  location: location
-  properties: {
-    securityRules: [
-      
-    ]
-  }
-}
-
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+resource storageAccountEnforce 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
   location: location
   sku: {
@@ -136,11 +108,36 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     networkAcls: {
       bypass: 'AzureServices'
       defaultAction: 'Deny'
-      virtualNetworkRules: [
-        {
-          id: '${vnet.id}/subnets/${subnetName}'
-        }
-      ]
+    }
+  }
+}
+
+resource storageAccountLearn 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: storageAccountName2
+  location: location
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'StorageV2'
+  properties: {
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
+    }
+  }
+}
+
+resource storageAccountNoPerim 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: storageAccountName3
+  location: location
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'StorageV2'
+  properties: {
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
     }
   }
 }
@@ -153,7 +150,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enabledForDeployment: true
     enabledForDiskEncryption: false
     enabledForTemplateDeployment: true
-    enableSoftDelete: false
+    enableSoftDelete: true
+    enablePurgeProtection: true
     sku: {
       family: 'A'
       name: 'standard'
@@ -163,11 +161,6 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     networkAcls: {
       bypass: 'AzureServices'
       defaultAction: 'Deny'
-      virtualNetworkRules: [
-        {
-          id: '${vnet.id}/subnets/${subnetName}'
-        }
-      ]
     }
   }
 }
@@ -182,24 +175,6 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-05-01' = {
         properties: {
           subnet: {
             id: '${vnet.id}/subnets/${subnetName}'
-          }
-          privateIPAllocationMethod: 'Dynamic'
-        }
-      }
-    ]
-  }
-}
-
-resource secondaryNic 'Microsoft.Network/networkInterfaces@2023-05-01' = {
-  name: '${secondaryVmName}-nic'
-  location: secondaryLocation
-  properties: {
-    ipConfigurations: [
-      {
-        name: 'ipconfig1'
-        properties: {
-          subnet: {
-            id: '${secondaryVnet.id}/subnets/${subnetName}'
           }
           privateIPAllocationMethod: 'Dynamic'
         }
@@ -241,39 +216,6 @@ resource virtualMachine 'Microsoft.Compute/virtualMachines@2024-03-01' = {
   }
 }
 
-resource secondaryVirtualMachine 'Microsoft.Compute/virtualMachines@2024-03-01' = {
-  name: secondaryVmName
-  location: secondaryLocation
-  properties: {
-    hardwareProfile: {
-      vmSize: 'Standard_B2ms'
-    }
-    osProfile: {
-      computerName: secondaryVmName
-      adminUsername: adminUsername
-      adminPassword: adminPassword
-    }
-    networkProfile: {
-      networkInterfaces: [
-        {
-          id: secondaryNic.id
-        }
-      ]
-    }
-    storageProfile: {
-      imageReference: {
-        publisher: 'MicrosoftWindowsServer'
-        offer: 'WindowsServer'
-        sku: '2019-Datacenter'
-        version: 'latest'
-      }
-      osDisk: {
-        createOption: 'FromImage'
-      }
-    }
-  }
-}
-
 resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-05-01' = {
   name: 'storagePrivateEndpoint'
   location: resourceGroup().location
@@ -285,7 +227,7 @@ resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-05-01' 
       {
         name: 'storageConnection'
         properties: {
-          privateLinkServiceId: storageAccount.id
+          privateLinkServiceId: storageAccountEnforce.id
           groupIds: [
             'blob'
           ]
@@ -394,19 +336,29 @@ module bastion 'bastion.bicep' = {
   }
 }
 
-module bastion2 'bastion.bicep' = {
-  name: '${prefix}-bastion2'
-  dependsOn: [
-    secondaryVnet
-  ]
+module cmk 'cmk.bicep' = {
+  name: '${prefix}-cmk'
   params: {
-    vnetName: secondaryVnetName
-    vnetNewOrExisting: 'existing'
-    bastionSubnetIpPrefix: '10.1.1.0/26'
-    bastionHostName: secondaryBastionHostName
+    keyVaultName: keyVaultName
+    location: location
+  }
+  dependsOn: [
+    keyVault
+  ]
+}
+
+module storageOtherSub 'sub2storage.bicep' = {
+  name: 'storageAccountModule'
+  scope: resourceGroup(secondSubId, secondResourceGroup)
+  params: {
+    storageAccountName: storageAccountName4
     location: location
   }
 }
+
+output storageAccountIdOtherSub string = storageOtherSub.outputs.storageAccountId
+output managedIdentityId string = cmk.outputs.managedIdentityId
+output rsaKeyId string = cmk.outputs.rsaKeyId
 
 
 
