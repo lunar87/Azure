@@ -20,8 +20,10 @@ var vnetName = '${prefix}vnet-${suffix}'
 var subnetName = 'apps'
 var nsgName = '${prefix}nsg-${suffix}'
 var nspName = '${prefix}nsp-${suffix}'
-var nspProfileName = '${prefix}nspprof-${suffix}'
-var nspProfileAssocName = '${prefix}nspprofassoc-${suffix}'
+var nspProfileNameEnforce = '${prefix}nspprofEnforce-${suffix}'
+var nspProfileNameLearn = '${prefix}nspprofLearn-${suffix}'
+var nspProfileAssocName1 = '${prefix}nspprofassoc1-${suffix}'
+var nspProfileAssocName2 = '${prefix}nspprofassoc2-${suffix}'
 var bastionHostName = '${prefix}bastion-${suffix}'
 
 resource nsp 'Microsoft.Network/networkSecurityPerimeters@2023-08-01-preview' = {
@@ -30,27 +32,48 @@ resource nsp 'Microsoft.Network/networkSecurityPerimeters@2023-08-01-preview' = 
   properties: { }
 }
 
-resource nspProf 'Microsoft.Network/networkSecurityPerimeters/profiles@2023-08-01-preview' = {
+resource nspProf1 'Microsoft.Network/networkSecurityPerimeters/profiles@2023-08-01-preview' = {
   location: resourceGroup().location
-  name: nspProfileName
+  name: nspProfileNameEnforce
   parent: nsp
   properties: {}
 }
 
-resource nspassoc 'Microsoft.Network/networkSecurityPerimeters/resourceAssociations@2023-08-01-preview' = {
+resource nspProf2 'Microsoft.Network/networkSecurityPerimeters/profiles@2023-08-01-preview' = {
   location: resourceGroup().location
-  name: nspProfileAssocName
+  name: nspProfileNameLearn
+  parent: nsp
+  properties: {}
+}
+
+resource nspassoc1 'Microsoft.Network/networkSecurityPerimeters/resourceAssociations@2023-08-01-preview' = {
+  location: resourceGroup().location
+  name: nspProfileAssocName1
+  parent: nsp
+  properties: {
+    accessMode:'Enforce'
+    privateLinkResource: {
+      id: storageAccountEnforce.id
+    }
+    profile: {
+      id: nspProf1.id
+    }
+  }
+}
+
+resource nspassoc2 'Microsoft.Network/networkSecurityPerimeters/resourceAssociations@2023-08-01-preview' = {
+  location: resourceGroup().location
+  name: nspProfileAssocName2
   parent: nsp
   properties: {
     accessMode:'Learning'
     privateLinkResource: {
-      id: keyVault.id
+      id: storageAccountLearn.id
     }
     profile: {
-      id: nspProf.id
+      id: nspProf2.id
     }
   }
-
 }
 
 resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
