@@ -1,4 +1,4 @@
-# Using GitHub, Terraform/Bicep, and GitHub Copilot for Microsoft Cloud Solution Architects
+# Using GitHub, Terraform/Bicep, and GitHub Copilot
 
 ## Objective
 This training will teach Microsoft Cloud Solution Architects how to:
